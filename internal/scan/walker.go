@@ -58,3 +58,10 @@ func KnownPlatforms() []string {
 	}
 	return out
 }
+
+// PlatformExtensions returns the lower-cased file extensions (with leading
+// dot, e.g. ".gb") associated with the given platform ID. The slice is
+// shared; callers must not modify it.
+func PlatformExtensions(id string) []string {
+	return platformExts[id]
+}
