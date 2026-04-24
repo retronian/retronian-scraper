@@ -5,29 +5,27 @@ import (
 	"os"
 
 	"github.com/retronian/retronian-scraper/internal/cli"
+	"github.com/retronian/retronian-scraper/internal/gui"
 )
 
 func main() {
-	if len(os.Args) < 2 {
-		usage()
-		os.Exit(2)
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "scan":
+			os.Exit(cli.Scan(os.Args[2:]))
+		case "-h", "--help", "help":
+			usage()
+			return
+		}
 	}
-	switch os.Args[1] {
-	case "scan":
-		os.Exit(cli.Scan(os.Args[2:]))
-	case "-h", "--help", "help":
-		usage()
-		return
-	default:
-		usage()
-		os.Exit(2)
-	}
+	gui.Run()
 }
 
 func usage() {
-	fmt.Println(`Retronian Scraper — 多言語 ROM メタデータツール (CLI)
+	fmt.Println(`Retronian Scraper — 多言語 ROM メタデータツール
 
 Usage:
-  retronian-scraper scan <rom-dir> --platform <id> [--out gamelist.xml]
-  retronian-scraper help`)
+  retronian-scraper                GUI を起動
+  retronian-scraper scan <dir>     CLI スキャン (詳細は -h を付けて実行)
+  retronian-scraper help           このヘルプ`)
 }

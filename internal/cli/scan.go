@@ -5,15 +5,10 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
-	"runtime"
-	"sync"
-	"sync/atomic"
 
 	"github.com/retronian/retronian-scraper/internal/db"
-	"github.com/retronian/retronian-scraper/internal/export"
 	"github.com/retronian/retronian-scraper/internal/match"
-	"github.com/retronian/retronian-scraper/internal/scan"
+	"github.com/retronian/retronian-scraper/internal/pipeline"
 )
 
 func Scan(args []string) int {
@@ -33,65 +28,26 @@ func Scan(args []string) int {
 		fs.Usage()
 		return 2
 	}
-	romDir := fs.Arg(0)
 
-	paths, err := scan.Walk(romDir, *platform)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return 1
-	}
-	if len(paths) == 0 {
-		fmt.Fprintf(os.Stderr, "no ROMs found under %s for platform %s\n", romDir, *platform)
-		return 1
-	}
-	fmt.Printf("found %d ROM(s)\n", len(paths))
-
-	hashes, err := hashAll(context.Background(), paths)
+	output, err := pipeline.Run(context.Background(), pipeline.Options{
+		ROMDir:   fs.Arg(0),
+		Platform: *platform,
+		BaseURL:  *baseURL,
+	}, cliProgress())
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
 
-	apiURL := fmt.Sprintf("%s/api/v1/%s.json", *baseURL, *platform)
-	fmt.Printf("fetching DB: %s\n", apiURL)
-	client := db.NewClient()
-	client.BaseURL = *baseURL
-	games, err := client.PlatformGames(*platform)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return 1
-	}
-	fmt.Printf("%d games in DB\n", len(games))
-
-	matcher := match.New(games)
-	results := make([]match.Result, len(paths))
-	tierCount := map[match.Tier]int{}
-	for i, p := range paths {
-		results[i] = matcher.Match(p, hashes[i])
-		tierCount[results[i].Tier]++
-	}
-
-	matched := tierCount[match.TierSHA1] + tierCount[match.TierSlug] + tierCount[match.TierHashFallback]
+	matched := output.TierCount[match.TierSHA1] + output.TierCount[match.TierSlug] + output.TierCount[match.TierHashFallback]
 	fmt.Printf("matched %d/%d (sha1=%d, fallback_hash=%d, unmatched=%d)\n",
-		matched, len(results),
-		tierCount[match.TierSHA1],
-		tierCount[match.TierHashFallback],
-		tierCount[match.TierNone],
+		matched, len(output.Results),
+		output.TierCount[match.TierSHA1],
+		output.TierCount[match.TierHashFallback],
+		output.TierCount[match.TierNone],
 	)
 
-	if dir := filepath.Dir(*out); dir != "" {
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			return 1
-		}
-	}
-	f, err := os.Create(*out)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return 1
-	}
-	defer f.Close()
-	if err := export.WriteESDE(f, results, *imageDir); err != nil {
+	if err := pipeline.WriteGameList(output, *out, *imageDir); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
@@ -99,42 +55,33 @@ func Scan(args []string) int {
 	return 0
 }
 
-func hashAll(ctx context.Context, paths []string) ([]scan.Hashes, error) {
-	hashes := make([]scan.Hashes, len(paths))
-	errs := make([]error, len(paths))
-	var done int64
-	var wg sync.WaitGroup
-	sem := make(chan struct{}, runtime.NumCPU())
-
-	for i, p := range paths {
-		if err := ctx.Err(); err != nil {
-			return nil, err
-		}
-		wg.Add(1)
-		sem <- struct{}{}
-		go func(i int, p string) {
-			defer wg.Done()
-			defer func() { <-sem }()
-			h, err := scan.Hash(p)
-			if err != nil {
-				errs[i] = fmt.Errorf("hash %s: %w", p, err)
+// cliProgress returns a progress callback that mirrors the prior CLI output:
+// - walking complete:  "found N ROM(s)"
+// - hashing:           "\rhashing N/M" every 50 items (and at completion)
+// - fetching start:    "fetching DB: <url>"
+// - fetching complete: "M games in DB"
+func cliProgress() func(pipeline.Progress) {
+	return func(p pipeline.Progress) {
+		switch p.Phase {
+		case pipeline.PhaseWalking:
+			if p.Total > 0 {
+				fmt.Printf("found %d ROM(s)\n", p.Total)
+			}
+		case pipeline.PhaseHashing:
+			if p.Total == 0 {
 				return
 			}
-			hashes[i] = h
-			n := atomic.AddInt64(&done, 1)
-			if int(n) == len(paths) {
-				fmt.Fprintf(os.Stderr, "\rhashing %d/%d\n", n, len(paths))
-			} else if int(n)%50 == 0 {
-				fmt.Fprintf(os.Stderr, "\rhashing %d/%d", n, len(paths))
+			if p.Done == p.Total {
+				fmt.Fprintf(os.Stderr, "\rhashing %d/%d\n", p.Done, p.Total)
+			} else if p.Done%50 == 0 {
+				fmt.Fprintf(os.Stderr, "\rhashing %d/%d", p.Done, p.Total)
 			}
-		}(i, p)
-	}
-	wg.Wait()
-
-	for _, e := range errs {
-		if e != nil {
-			return nil, e
+		case pipeline.PhaseFetching:
+			if p.Done == 0 {
+				fmt.Printf("fetching DB: %s\n", p.Msg)
+			} else {
+				fmt.Printf("%d games in DB\n", p.Total)
+			}
 		}
 	}
-	return hashes, nil
 }
