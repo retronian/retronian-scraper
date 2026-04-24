@@ -5,5 +5,4 @@
 *.app
 /Icon.png
 .DS_Store
-/HANDOFF.md
 /.serena/
