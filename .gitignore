@@ -1,0 +1,9 @@
+/retronian-scraper
+/retronian-scraper.exe
+/dist/
+/build/
+*.app
+/Icon.png
+.DS_Store
+/HANDOFF.md
+/.serena/
