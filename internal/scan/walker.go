@@ -28,6 +28,7 @@ func Walk(root, platform string) ([]string, error) {
 	for _, e := range exts {
 		extSet[e] = struct{}{}
 	}
+	extSet[".zip"] = struct{}{}
 
 	var out []string
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, walkErr error) error {
