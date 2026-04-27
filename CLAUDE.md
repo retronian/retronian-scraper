@@ -61,7 +61,7 @@ internal/normalize/                  ROM folder and file name normalization
 ### Phase 2.5 Complete: ROM Folder Name Normalization
 
 - Added `internal/normalize/`.
-- Supports official folder-name profiles for `es-de`, `onion`, `minui`, `unuui`, `batocera`, and `recalbox`.
+- Supports official folder-name profiles for `es-de`, `onion`, `minui`, `unuos`, `batocera`, and `recalbox`.
 - Supports localized folder names through `normalize --lang <lang>` where the frontend profile provides them. Current folder-name languages are `de`, `en`, `es`, `fr`, `ja`, `ko`, and `zh`.
 - Detects internal platform IDs through aliases with extension-distribution assistance.
 - Added the `normalize` CLI subcommand with dry-run default and `--apply`.
@@ -105,7 +105,7 @@ Important: Go's standard `flag` package requires positional arguments to appear 
 - **`.app` bundle and `Icon.png`**: placeholders that need replacement with final design assets.
 - **License attribution**: native-game-db data derives from Wikipedia under CC BY-SA 4.0. `gamelist.xml` and GUI About attribution are still TODO.
 - **Deprecated `fyne` CLI**: `go install fyne.io/fyne/v2/cmd/fyne@latest` shows a deprecation warning. Prefer migrating to `fyne.io/tools/cmd/fyne`.
-- **`unuui` (UnuOS) / `recalbox` normalize profiles**: currently provisional and aligned with `minui` / `batocera`. Split after hardware verification if needed.
+- **`unuos` (UnuOS) / `recalbox` normalize profiles**: currently provisional and aligned with `minui` / `batocera`. Split after hardware verification if needed.
 - **MinUI / OnionOS unsupported platforms**: `n64` and MinUI `nds` fall back to the internal ID as the folder name.
 
 ## Coding and Communication Rules

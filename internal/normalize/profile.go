@@ -19,7 +19,7 @@ const (
 	FrontendESDE     FrontendID = "es-de"
 	FrontendOnion    FrontendID = "onion"
 	FrontendMinUI    FrontendID = "minui"
-	FrontendUnUUI    FrontendID = "unuui"
+	FrontendUnuOS    FrontendID = "unuos"
 	FrontendBatocera FrontendID = "batocera"
 	FrontendRecalbox FrontendID = "recalbox"
 
@@ -76,7 +76,7 @@ func (p Profile) Supports(internalID string) bool {
 
 // Profiles holds all frontend profiles keyed by FrontendID.
 //
-// TODO: unuui currently mirrors minui; differentiate once the fork's
+// TODO: unuos currently mirrors minui; differentiate once the fork's
 // folder convention is verified on a real device.
 // TODO: recalbox currently mirrors batocera; verify against a real
 // Recalbox install before treating as authoritative.
@@ -190,8 +190,8 @@ var Profiles = map[FrontendID]Profile{
 			},
 		},
 	},
-	FrontendUnUUI: {
-		ID:          FrontendUnUUI,
+	FrontendUnuOS: {
+		ID:          FrontendUnuOS,
 		DisplayName: "UnuOS",
 		Folders: map[string]string{
 			"fc":  "Nintendo Entertainment System (FC)",

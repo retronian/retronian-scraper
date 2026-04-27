@@ -161,7 +161,7 @@ func targetRawName(profile Profile, r match.Result) (string, error) {
 		ext = filepath.Ext(inner)
 	}
 
-	if profile.ID == FrontendMinUI || profile.ID == FrontendUnUUI {
+	if profile.ID == FrontendMinUI || profile.ID == FrontendUnuOS {
 		title := export.PickTitle(r.Game.Titles)
 		if title == "" {
 			return "", fmt.Errorf("matched game has no title")

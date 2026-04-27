@@ -45,7 +45,7 @@ Retronian Scraper can rename platform subfolders under a ROM parent directory to
 ./retronian-scraper normalize --frontend minui --lang ja --apply /path/to/Roms
 ```
 
-Supported frontends: `es-de`, `onion` (OnionOS), `minui`, `unuui` (UnuOS), `batocera`, `recalbox`
+Supported frontends: `es-de`, `onion` (OnionOS), `minui`, `unuos` (UnuOS), `batocera`, `recalbox`
 Supported folder-name languages: `de`, `en`, `es`, `fr`, `ja`, `ko`, `zh`
 
 Examples:

@@ -98,7 +98,7 @@ func TestProfiles_CoverAllInternalPlatforms(t *testing.T) {
 
 func TestKnownFrontends_Sorted(t *testing.T) {
 	got := KnownFrontends()
-	want := []string{"batocera", "es-de", "minui", "onion", "recalbox", "unuui"}
+	want := []string{"batocera", "es-de", "minui", "onion", "recalbox", "unuos"}
 	if len(got) != len(want) {
 		t.Fatalf("len mismatch: want %d, got %d (%v)", len(want), len(got), got)
 	}
