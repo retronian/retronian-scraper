@@ -78,9 +78,9 @@ Retronian Scraper can match ROM files against native-game-db and rename them for
 
 `--format raw` normalizes to raw ROM files. `--format zip` normalizes to one-ROM zip files. Zip inputs are matched by the ROM inside the archive, not by the outer zip filename.
 
-## MinUI Box Art
+## MinUI Cover Art
 
-MinUI artwork can be placed in a `.res` directory inside each platform folder. Retronian Scraper currently provides a helper script that downloads the best available box art for matched ROMs and writes files as:
+MinUI supports cover art in a `.res` directory inside each platform folder. Retronian Scraper provides a helper script that downloads the best available box art for matched ROMs and writes files in MinUI's existing cover art layout:
 
 ```text
 <platform folder>/.res/<ROM filename>.png
