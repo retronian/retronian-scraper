@@ -1,5 +1,5 @@
 // Package normalize provides ROM platform folder name normalization for
-// multiple frontends (ES-DE, OnionOS, MinUI, UnuUI, Batocera, Recalbox).
+// multiple frontends (ES-DE, OnionOS, MinUI, UnuOS, Batocera, Recalbox).
 //
 // The internal platform IDs (fc, sfc, gb, ...) match those used by
 // internal/scan. Each Profile maps an internal ID to the folder name that
@@ -192,7 +192,7 @@ var Profiles = map[FrontendID]Profile{
 	},
 	FrontendUnUUI: {
 		ID:          FrontendUnUUI,
-		DisplayName: "UnuUI",
+		DisplayName: "UnuOS",
 		Folders: map[string]string{
 			"fc":  "Nintendo Entertainment System (FC)",
 			"sfc": "Super Nintendo Entertainment System (SFC)",

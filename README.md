@@ -45,25 +45,25 @@ Retronian Scraper can rename platform subfolders under a ROM parent directory to
 ./retronian-scraper normalize --frontend minui --lang ja --apply /path/to/Roms
 ```
 
-Supported frontends: `es-de`, `onion` (OnionOS), `minui`, `unuui`, `batocera`, `recalbox`
+Supported frontends: `es-de`, `onion` (OnionOS), `minui`, `unuui` (UnuOS), `batocera`, `recalbox`
 Supported folder-name languages: `de`, `en`, `es`, `fr`, `ja`, `ko`, `zh`
 
 Examples:
 
-| Internal ID | es-de | onion | minui / unuui | batocera / recalbox |
+| Internal ID | es-de | onion | MinUI / UnuOS | batocera / recalbox |
 |---|---|---|---|---|
 | `gb` | `gb` | `GB` | `Game Boy (GB)` | `gb` |
 | `sfc` | `snes` | `SFC` | `Super Nintendo Entertainment System (SFC)` | `snes` |
 | `md` | `megadrive` | `MD` | `Sega Genesis (MD)` | `megadrive` |
 | `ps1` | `psx` | `PS` | `Sony PlayStation (PS)` | `psx` |
 
-MinUI and UnuUI also support localized folder names with `--lang`, such as `ゲームボーイ (GB)` for Japanese and `게임보이 (GB)` for Korean.
+MinUI and UnuOS also support localized folder names with `--lang`, such as `ゲームボーイ (GB)` for Japanese and `게임보이 (GB)` for Korean.
 
 If a frontend does not officially support a platform, such as `n64` on MinUI, Retronian Scraper keeps the internal ID as the folder name and marks the action as `fallback`.
 
 ## ROM File Normalization
 
-Retronian Scraper can match ROM files against native-game-db and rename them for the selected frontend. MinUI / UnuUI prefer Japanese native-script titles; other frontends prefer the database `ROM.name` value, which is based on No-Intro naming.
+Retronian Scraper can match ROM files against native-game-db and rename them for the selected frontend. MinUI / UnuOS prefer Japanese native-script titles; other frontends prefer the database `ROM.name` value, which is based on No-Intro naming.
 
 ```bash
 # MinUI: rename to raw ROM files with Japanese native-script titles.
