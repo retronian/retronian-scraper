@@ -147,11 +147,12 @@ func hashAll(ctx context.Context, paths []string, report func(Progress)) ([]scan
 }
 
 func summary(tier map[match.Tier]int, total int) string {
-	matched := tier[match.TierSHA1] + tier[match.TierSlug] + tier[match.TierHashFallback]
-	return fmt.Sprintf("matched %d/%d (sha1=%d, fallback_hash=%d, unmatched=%d)",
+	matched := tier[match.TierSHA1] + tier[match.TierSlug] + tier[match.TierHashFallback] + tier[match.TierNameFallback]
+	return fmt.Sprintf("matched %d/%d (sha1=%d, fallback_hash=%d, name=%d, unmatched=%d)",
 		matched, total,
 		tier[match.TierSHA1],
 		tier[match.TierHashFallback],
+		tier[match.TierNameFallback],
 		tier[match.TierNone],
 	)
 }

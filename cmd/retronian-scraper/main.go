@@ -24,11 +24,11 @@ func main() {
 }
 
 func usage() {
-	fmt.Println(`Retronian Scraper — 多言語 ROM メタデータツール
+	fmt.Println(`Retronian Scraper - multilingual ROM metadata tool
 
 Usage:
-  retronian-scraper                          GUI を起動
-  retronian-scraper scan <dir>               CLI スキャン (詳細は -h を付けて実行)
-  retronian-scraper normalize <parent-dir>   ROM フォルダ名を frontend 規約に正規化
-  retronian-scraper help                     このヘルプ`)
+  retronian-scraper                          Start the GUI
+  retronian-scraper scan <dir>               Run a CLI scan; pass -h for details
+  retronian-scraper normalize <parent-dir>   Normalize ROM folder names for a frontend
+  retronian-scraper help                     Show this help`)
 }

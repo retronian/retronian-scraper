@@ -38,6 +38,45 @@ func TestProfile_TargetFolder(t *testing.T) {
 	if got, ok := minui.TargetFolder("gb"); !ok || got != "Game Boy (GB)" {
 		t.Errorf("minui gb: want (Game Boy (GB),true), got (%q,%v)", got, ok)
 	}
+	if got, ok := minui.TargetFolderForLanguage("gb", LanguageJapanese); !ok || got != "ゲームボーイ (GB)" {
+		t.Errorf("minui gb ja: want (ゲームボーイ (GB),true), got (%q,%v)", got, ok)
+	}
+	if got, ok := minui.TargetFolderForLanguage("n64", LanguageJapanese); ok || got != "n64" {
+		t.Errorf("minui n64 ja fallback: want (n64,false), got (%q,%v)", got, ok)
+	}
+	if got, ok := esde.TargetFolderForLanguage("gb", LanguageJapanese); !ok || got != "gb" {
+		t.Errorf("es-de gb ja fallback: want (gb,true), got (%q,%v)", got, ok)
+	}
+}
+
+func TestParseLanguage(t *testing.T) {
+	cases := []struct {
+		in   string
+		want LanguageID
+	}{
+		{"", LanguageEnglish},
+		{"en", LanguageEnglish},
+		{" EN ", LanguageEnglish},
+		{"ja", LanguageJapanese},
+		{"ko", LanguageKorean},
+		{"zh", LanguageChinese},
+		{"fr", LanguageFrench},
+		{"es", LanguageSpanish},
+		{"de", LanguageGerman},
+	}
+	for _, tc := range cases {
+		got, err := ParseLanguage(tc.in)
+		if err != nil {
+			t.Errorf("ParseLanguage(%q) unexpected error: %v", tc.in, err)
+			continue
+		}
+		if got != tc.want {
+			t.Errorf("ParseLanguage(%q): want %q, got %q", tc.in, tc.want, got)
+		}
+	}
+	if _, err := ParseLanguage("ru"); err == nil {
+		t.Errorf("ParseLanguage(ru) expected error")
+	}
 }
 
 // All known internal platforms must resolve via TargetFolder for every
@@ -60,6 +99,19 @@ func TestProfiles_CoverAllInternalPlatforms(t *testing.T) {
 func TestKnownFrontends_Sorted(t *testing.T) {
 	got := KnownFrontends()
 	want := []string{"batocera", "es-de", "minui", "onion", "recalbox", "unuui"}
+	if len(got) != len(want) {
+		t.Fatalf("len mismatch: want %d, got %d (%v)", len(want), len(got), got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("[%d] want %q, got %q", i, want[i], got[i])
+		}
+	}
+}
+
+func TestKnownLanguages(t *testing.T) {
+	got := KnownLanguages()
+	want := []string{"de", "en", "es", "fr", "ja", "ko", "zh"}
 	if len(got) != len(want) {
 		t.Fatalf("len mismatch: want %d, got %d (%v)", len(want), len(got), got)
 	}

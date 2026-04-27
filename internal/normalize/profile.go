@@ -13,6 +13,7 @@ import (
 )
 
 type FrontendID string
+type LanguageID string
 
 const (
 	FrontendESDE     FrontendID = "es-de"
@@ -21,6 +22,14 @@ const (
 	FrontendUnUUI    FrontendID = "unuui"
 	FrontendBatocera FrontendID = "batocera"
 	FrontendRecalbox FrontendID = "recalbox"
+
+	LanguageEnglish  LanguageID = "en"
+	LanguageJapanese LanguageID = "ja"
+	LanguageKorean   LanguageID = "ko"
+	LanguageChinese  LanguageID = "zh"
+	LanguageFrench   LanguageID = "fr"
+	LanguageSpanish  LanguageID = "es"
+	LanguageGerman   LanguageID = "de"
 )
 
 // Profile holds the folder naming convention of a single frontend.
@@ -28,9 +37,10 @@ const (
 // name. IDs absent from Folders are unsupported by the frontend; callers
 // fall back to the internal ID itself via TargetFolder.
 type Profile struct {
-	ID          FrontendID
-	DisplayName string
-	Folders     map[string]string
+	ID               FrontendID
+	DisplayName      string
+	Folders          map[string]string
+	LocalizedFolders map[LanguageID]map[string]string
 }
 
 // TargetFolder returns the frontend folder name for the given internal
@@ -38,6 +48,19 @@ type Profile struct {
 // supports the platform; if false, the returned name is the internal ID
 // itself (used as a generic fallback).
 func (p Profile) TargetFolder(internalID string) (string, bool) {
+	return p.TargetFolderForLanguage(internalID, LanguageEnglish)
+}
+
+// TargetFolderForLanguage returns the frontend folder name for the given
+// internal platform ID and language. Unsupported languages fall back to English.
+func (p Profile) TargetFolderForLanguage(internalID string, lang LanguageID) (string, bool) {
+	if lang != "" && lang != LanguageEnglish {
+		if folders, ok := p.LocalizedFolders[lang]; ok {
+			if name, ok := folders[internalID]; ok {
+				return name, true
+			}
+		}
+	}
 	if name, ok := p.Folders[internalID]; ok {
 		return name, true
 	}
@@ -104,6 +127,68 @@ var Profiles = map[FrontendID]Profile{
 			// n64, nds unsupported on MinUI target hardware.
 			"ps1": "Sony PlayStation (PS)",
 		},
+		LocalizedFolders: map[LanguageID]map[string]string{
+			LanguageJapanese: {
+				"fc":  "ファミリーコンピュータ (FC)",
+				"sfc": "スーパーファミコン (SFC)",
+				"gb":  "ゲームボーイ (GB)",
+				"gbc": "ゲームボーイカラー (GBC)",
+				"gba": "ゲームボーイアドバンス (GBA)",
+				"md":  "メガドライブ (MD)",
+				"pce": "PCエンジン (PCE)",
+				"ps1": "プレイステーション (PS)",
+			},
+			LanguageKorean: {
+				"fc":  "패밀리 컴퓨터 (FC)",
+				"sfc": "슈퍼 패미컴 (SFC)",
+				"gb":  "게임보이 (GB)",
+				"gbc": "게임보이 컬러 (GBC)",
+				"gba": "게임보이 어드밴스 (GBA)",
+				"md":  "메가 드라이브 (MD)",
+				"pce": "PC 엔진 (PCE)",
+				"ps1": "플레이스테이션 (PS)",
+			},
+			LanguageChinese: {
+				"fc":  "红白机 (FC)",
+				"sfc": "超级任天堂 (SFC)",
+				"gb":  "Game Boy (GB)",
+				"gbc": "Game Boy Color (GBC)",
+				"gba": "Game Boy Advance (GBA)",
+				"md":  "Mega Drive (MD)",
+				"pce": "PC Engine (PCE)",
+				"ps1": "PlayStation (PS)",
+			},
+			LanguageFrench: {
+				"fc":  "Nintendo Entertainment System (FC)",
+				"sfc": "Super Nintendo Entertainment System (SFC)",
+				"gb":  "Game Boy (GB)",
+				"gbc": "Game Boy Color (GBC)",
+				"gba": "Game Boy Advance (GBA)",
+				"md":  "Mega Drive (MD)",
+				"pce": "PC Engine (PCE)",
+				"ps1": "PlayStation (PS)",
+			},
+			LanguageSpanish: {
+				"fc":  "Nintendo Entertainment System (FC)",
+				"sfc": "Super Nintendo Entertainment System (SFC)",
+				"gb":  "Game Boy (GB)",
+				"gbc": "Game Boy Color (GBC)",
+				"gba": "Game Boy Advance (GBA)",
+				"md":  "Mega Drive (MD)",
+				"pce": "PC Engine (PCE)",
+				"ps1": "PlayStation (PS)",
+			},
+			LanguageGerman: {
+				"fc":  "Nintendo Entertainment System (FC)",
+				"sfc": "Super Nintendo Entertainment System (SFC)",
+				"gb":  "Game Boy (GB)",
+				"gbc": "Game Boy Color (GBC)",
+				"gba": "Game Boy Advance (GBA)",
+				"md":  "Mega Drive (MD)",
+				"pce": "PC Engine (PCE)",
+				"ps1": "PlayStation (PS)",
+			},
+		},
 	},
 	FrontendUnUUI: {
 		ID:          FrontendUnUUI,
@@ -117,6 +202,68 @@ var Profiles = map[FrontendID]Profile{
 			"md":  "Sega Genesis (MD)",
 			"pce": "TurboGrafx-16 (PCE)",
 			"ps1": "Sony PlayStation (PS)",
+		},
+		LocalizedFolders: map[LanguageID]map[string]string{
+			LanguageJapanese: {
+				"fc":  "ファミリーコンピュータ (FC)",
+				"sfc": "スーパーファミコン (SFC)",
+				"gb":  "ゲームボーイ (GB)",
+				"gbc": "ゲームボーイカラー (GBC)",
+				"gba": "ゲームボーイアドバンス (GBA)",
+				"md":  "メガドライブ (MD)",
+				"pce": "PCエンジン (PCE)",
+				"ps1": "プレイステーション (PS)",
+			},
+			LanguageKorean: {
+				"fc":  "패밀리 컴퓨터 (FC)",
+				"sfc": "슈퍼 패미컴 (SFC)",
+				"gb":  "게임보이 (GB)",
+				"gbc": "게임보이 컬러 (GBC)",
+				"gba": "게임보이 어드밴스 (GBA)",
+				"md":  "메가 드라이브 (MD)",
+				"pce": "PC 엔진 (PCE)",
+				"ps1": "플레이스테이션 (PS)",
+			},
+			LanguageChinese: {
+				"fc":  "红白机 (FC)",
+				"sfc": "超级任天堂 (SFC)",
+				"gb":  "Game Boy (GB)",
+				"gbc": "Game Boy Color (GBC)",
+				"gba": "Game Boy Advance (GBA)",
+				"md":  "Mega Drive (MD)",
+				"pce": "PC Engine (PCE)",
+				"ps1": "PlayStation (PS)",
+			},
+			LanguageFrench: {
+				"fc":  "Nintendo Entertainment System (FC)",
+				"sfc": "Super Nintendo Entertainment System (SFC)",
+				"gb":  "Game Boy (GB)",
+				"gbc": "Game Boy Color (GBC)",
+				"gba": "Game Boy Advance (GBA)",
+				"md":  "Mega Drive (MD)",
+				"pce": "PC Engine (PCE)",
+				"ps1": "PlayStation (PS)",
+			},
+			LanguageSpanish: {
+				"fc":  "Nintendo Entertainment System (FC)",
+				"sfc": "Super Nintendo Entertainment System (SFC)",
+				"gb":  "Game Boy (GB)",
+				"gbc": "Game Boy Color (GBC)",
+				"gba": "Game Boy Advance (GBA)",
+				"md":  "Mega Drive (MD)",
+				"pce": "PC Engine (PCE)",
+				"ps1": "PlayStation (PS)",
+			},
+			LanguageGerman: {
+				"fc":  "Nintendo Entertainment System (FC)",
+				"sfc": "Super Nintendo Entertainment System (SFC)",
+				"gb":  "Game Boy (GB)",
+				"gbc": "Game Boy Color (GBC)",
+				"gba": "Game Boy Advance (GBA)",
+				"md":  "Mega Drive (MD)",
+				"pce": "PC Engine (PCE)",
+				"ps1": "PlayStation (PS)",
+			},
 		},
 	},
 	FrontendBatocera: {
@@ -161,6 +308,35 @@ func LookupProfile(s string) (Profile, error) {
 		return p, nil
 	}
 	return Profile{}, fmt.Errorf("unknown frontend %q (known: %s)", s, strings.Join(KnownFrontends(), ", "))
+}
+
+// ParseLanguage resolves a language identifier for folder normalization.
+func ParseLanguage(s string) (LanguageID, error) {
+	key := LanguageID(strings.ToLower(strings.TrimSpace(s)))
+	if key == "" {
+		return LanguageEnglish, nil
+	}
+	switch key {
+	case LanguageEnglish, LanguageJapanese, LanguageKorean, LanguageChinese, LanguageFrench, LanguageSpanish, LanguageGerman:
+		return key, nil
+	default:
+		return "", fmt.Errorf("unknown language %q (known: %s)", s, strings.Join(KnownLanguages(), ", "))
+	}
+}
+
+// KnownLanguages returns the sorted list of folder-name languages.
+func KnownLanguages() []string {
+	out := []string{
+		string(LanguageEnglish),
+		string(LanguageJapanese),
+		string(LanguageKorean),
+		string(LanguageChinese),
+		string(LanguageFrench),
+		string(LanguageSpanish),
+		string(LanguageGerman),
+	}
+	sort.Strings(out)
+	return out
 }
 
 // KnownFrontends returns the sorted list of supported frontend IDs.

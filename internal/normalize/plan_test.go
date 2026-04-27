@@ -58,6 +58,53 @@ func TestBuildPlan_RenameAndNoop(t *testing.T) {
 	}
 }
 
+func TestBuildPlanForLanguage_JapaneseFolderNames(t *testing.T) {
+	root := t.TempDir()
+	mkSubdir(t, root, "GameBoy")
+	mkSubdir(t, root, "スーパーファミコン (SFC)")
+
+	plan, err := BuildPlanForLanguage(root, Profiles[FrontendMinUI], LanguageJapanese)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	gb := findAction(t, plan, "GameBoy")
+	if gb.Status != StatusRename || filepath.Base(gb.Target) != "ゲームボーイ (GB)" {
+		t.Errorf("GameBoy: want rename → ゲームボーイ (GB), got %s → %s", gb.Status, filepath.Base(gb.Target))
+	}
+
+	sfc := findAction(t, plan, "スーパーファミコン (SFC)")
+	if sfc.Status != StatusNoop {
+		t.Errorf("スーパーファミコン (SFC): want noop, got %s", sfc.Status)
+	}
+}
+
+func TestBuildPlanForLanguage_AllSupportedLanguages(t *testing.T) {
+	wantGB := map[LanguageID]string{
+		LanguageEnglish:  "Game Boy (GB)",
+		LanguageJapanese: "ゲームボーイ (GB)",
+		LanguageKorean:   "게임보이 (GB)",
+		LanguageChinese:  "Game Boy (GB)",
+		LanguageFrench:   "Game Boy (GB)",
+		LanguageSpanish:  "Game Boy (GB)",
+		LanguageGerman:   "Game Boy (GB)",
+	}
+	for _, langText := range KnownLanguages() {
+		lang := LanguageID(langText)
+		root := t.TempDir()
+		mkSubdir(t, root, "gb")
+
+		plan, err := BuildPlanForLanguage(root, Profiles[FrontendMinUI], lang)
+		if err != nil {
+			t.Fatal(err)
+		}
+		a := findAction(t, plan, "gb")
+		if filepath.Base(a.Target) != wantGB[lang] {
+			t.Errorf("lang %s: want %q, got %q", lang, wantGB[lang], filepath.Base(a.Target))
+		}
+	}
+}
+
 func TestBuildPlan_HiddenIgnored(t *testing.T) {
 	root := t.TempDir()
 	mkSubdir(t, root, ".git")

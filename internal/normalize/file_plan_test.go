@@ -130,6 +130,42 @@ func TestApplyFilePlan_UnzipROM(t *testing.T) {
 	}
 }
 
+func TestApplyFilePlan_RewritesZipInnerName(t *testing.T) {
+	root := t.TempDir()
+	src := filepath.Join(root, "スーパーマリオランド.zip")
+	if err := writeTestZip(src, "old.gb", []byte("rom")); err != nil {
+		t.Fatal(err)
+	}
+
+	plan, err := BuildFilePlan(FileOptions{
+		ROMDir:   root,
+		Platform: "gb",
+		Profile:  Profiles[FrontendMinUI],
+		Format:   FileFormatZip,
+	}, []match.Result{matchedFile(src)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plan.Actions[0].Operation != FileOpRename {
+		t.Fatalf("operation: want rename, got %s", plan.Actions[0].Operation)
+	}
+	if plan.Actions[0].Status != StatusRename {
+		t.Fatalf("status: want rename, got %s", plan.Actions[0].Status)
+	}
+	if _, err := ApplyFilePlan(plan, false, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	zr, err := zip.OpenReader(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer zr.Close()
+	if len(zr.File) != 1 || zr.File[0].Name != "スーパーマリオランド.gb" {
+		t.Fatalf("zip entry: got %#v", zr.File)
+	}
+}
+
 func writeTestZip(path, name string, data []byte) error {
 	out, err := os.Create(path)
 	if err != nil {

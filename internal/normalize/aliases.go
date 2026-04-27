@@ -18,26 +18,33 @@ var aliasTable = map[string][]string{
 		"fc", "famicom", "nes",
 		"nintendoentertainmentsystem",
 		"nintendoentertainmentsystemfc",
+		"ファミリーコンピュータ", "ファミリーコンピュータfc",
 	},
 	"sfc": {
 		"sfc", "snes", "superfamicom", "supernintendo",
 		"supernintendoentertainmentsystem",
 		"supernintendoentertainmentsystemsfc",
+		"スーパーファミコン", "スーパーファミコンsfc",
 	},
 	"gb": {
 		"gb", "gameboy", "gameboygb",
+		"ゲームボーイ", "ゲームボーイgb",
 	},
 	"gbc": {
 		"gbc", "gameboycolor", "gameboycolorgbc",
+		"ゲームボーイカラー", "ゲームボーイカラーgbc",
 	},
 	"gba": {
 		"gba", "gameboyadvance", "gameboyadvancegba",
+		"ゲームボーイアドバンス", "ゲームボーイアドバンスgba",
 	},
 	"md": {
 		"md", "megadrive", "genesis", "segagenesis", "segagenesismd",
+		"メガドライブ", "メガドライブmd",
 	},
 	"pce": {
 		"pce", "pcengine", "turbografx", "turbografx16", "turbografx16pce",
+		"pcエンジン", "pcエンジンpce",
 	},
 	"n64": {
 		"n64", "nintendo64",
@@ -48,6 +55,7 @@ var aliasTable = map[string][]string{
 	"ps1": {
 		"ps1", "ps", "psx", "playstation",
 		"sonyplaystation", "sonyplaystationps",
+		"プレイステーション", "プレイステーションps",
 	},
 }
 
@@ -55,13 +63,30 @@ var aliasTable = map[string][]string{
 // Built once at init time.
 var aliasIndex = func() map[string]string {
 	out := make(map[string]string, 64)
-	for id, aliases := range aliasTable {
+	add := func(id string, aliases ...string) {
 		for _, a := range aliases {
+			a = NormalizeFolderName(a)
+			if a == "" {
+				continue
+			}
 			if existing, dup := out[a]; dup && existing != id {
 				panic("normalize: duplicate alias " + a +
 					" maps to both " + existing + " and " + id)
 			}
 			out[a] = id
+		}
+	}
+	for id, aliases := range aliasTable {
+		add(id, aliases...)
+	}
+	for _, profile := range Profiles {
+		for id, folder := range profile.Folders {
+			add(id, folder)
+		}
+		for _, folders := range profile.LocalizedFolders {
+			for id, folder := range folders {
+				add(id, folder)
+			}
 		}
 	}
 	return out

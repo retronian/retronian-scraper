@@ -34,6 +34,7 @@ type Action struct {
 type Plan struct {
 	ROMParentDir string
 	Profile      Profile
+	Language     LanguageID
 	Actions      []Action // sorted by basename(Source)
 }
 
@@ -41,6 +42,11 @@ type Plan struct {
 // an Action for each non-hidden entry. It performs no rename: the result
 // is purely descriptive and safe to display.
 func BuildPlan(romParentDir string, profile Profile) (*Plan, error) {
+	return BuildPlanForLanguage(romParentDir, profile, LanguageEnglish)
+}
+
+// BuildPlanForLanguage is BuildPlan with language-aware target folder names.
+func BuildPlanForLanguage(romParentDir string, profile Profile, lang LanguageID) (*Plan, error) {
 	info, err := os.Stat(romParentDir)
 	if err != nil {
 		return nil, err
@@ -87,7 +93,7 @@ func BuildPlan(romParentDir string, profile Profile) (*Plan, error) {
 			continue // ignore loose files at the root
 		}
 
-		actions = append(actions, classify(romParentDir, fullPath, name, profile))
+		actions = append(actions, classify(romParentDir, fullPath, name, profile, lang))
 	}
 
 	sort.Slice(actions, func(i, j int) bool {
@@ -99,12 +105,13 @@ func BuildPlan(romParentDir string, profile Profile) (*Plan, error) {
 	return &Plan{
 		ROMParentDir: romParentDir,
 		Profile:      profile,
+		Language:     lang,
 		Actions:      actions,
 	}, nil
 }
 
 // classify resolves the Action for one already-validated subdirectory.
-func classify(romParentDir, source, name string, profile Profile) Action {
+func classify(romParentDir, source, name string, profile Profile, lang LanguageID) Action {
 	det, err := DetectPlatform(source, name)
 	if err != nil {
 		return Action{
@@ -125,7 +132,7 @@ func classify(romParentDir, source, name string, profile Profile) Action {
 		}
 	}
 
-	target, supported := profile.TargetFolder(det.InternalID)
+	target, supported := profile.TargetFolderForLanguage(det.InternalID, lang)
 	targetPath := filepath.Join(romParentDir, target)
 
 	a := Action{

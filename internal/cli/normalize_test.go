@@ -94,3 +94,46 @@ func TestNormalize_ApplyPerformsRename(t *testing.T) {
 		t.Errorf("apply left source folder behind")
 	}
 }
+
+func TestNormalize_LangJapanese(t *testing.T) {
+	root := t.TempDir()
+	if err := os.Mkdir(filepath.Join(root, "GameBoy"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	code := runNormalize([]string{"--frontend", "minui", "--lang", "ja", "--apply", root}, &stdout, &stderr)
+	if code != 0 {
+		t.Errorf("apply no conflict: want exit 0, got %d (stderr: %s)", code, stderr.String())
+	}
+	if _, err := os.Stat(filepath.Join(root, "ゲームボーイ (GB)")); err != nil {
+		t.Errorf("apply did not rename to Japanese folder: %v\nstdout:\n%s", err, stdout.String())
+	}
+}
+
+func TestNormalize_LangKorean(t *testing.T) {
+	root := t.TempDir()
+	if err := os.Mkdir(filepath.Join(root, "GameBoy"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	code := runNormalize([]string{"--frontend", "minui", "--lang", "ko", "--apply", root}, &stdout, &stderr)
+	if code != 0 {
+		t.Errorf("apply no conflict: want exit 0, got %d (stderr: %s)", code, stderr.String())
+	}
+	if _, err := os.Stat(filepath.Join(root, "게임보이 (GB)")); err != nil {
+		t.Errorf("apply did not rename to Korean folder: %v\nstdout:\n%s", err, stdout.String())
+	}
+}
+
+func TestNormalize_UnknownLang(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := runNormalize([]string{"--frontend", "minui", "--lang", "ru", t.TempDir()}, &stdout, &stderr)
+	if code != 2 {
+		t.Errorf("unknown lang: want exit 2, got %d", code)
+	}
+	if !strings.Contains(stderr.String(), "unknown language") {
+		t.Errorf("stderr missing unknown language:\n%s", stderr.String())
+	}
+}

@@ -1,136 +1,140 @@
-# Retronian Scraper — Claude / AI Handoff
+# Retronian Scraper - Claude / AI Handoff
 
-このファイルは Claude Code (および互換 AI assistant) がこのプロジェクトで作業する際のコンテキストを与える。新規セッションを開始する AI は **必ず最初に読み込むこと**。
+This file gives Claude Code and compatible AI assistants project context. New sessions should read it before making changes.
 
-## プロジェクト概要
+## Project Overview
 
-**Retronian Scraper** = 多言語対応 ROM メタデータ GUI ツール (Go + Fyne)。姉妹プロジェクト [native-game-db](https://github.com/retronian/native-game-db) の公開 JSON API を消費し、ローカル ROM コレクションに日本語ネイティブスクリプトのタイトル + boxart を適用、ES-DE / EmulationStation 用 `gamelist.xml` や MinUI / OneOS 形式で書き出す。MusicBrainz Picard の ROM 版がコンセプト。
+**Retronian Scraper** is a multilingual ROM metadata GUI tool built with Go and Fyne. It consumes the public JSON API from the sister project [retronian-gamedb](https://github.com/retronian/retronian-gamedb), applies native-script titles and box art metadata to local ROM collections, and exports frontend-friendly metadata. The concept is MusicBrainz Picard for ROMs.
 
-旧名: `Babel Librarian` → `Retronian Scraper` に改名済み (2026-04-23)。
+Former name: `Babel Librarian`. Renamed to `Retronian Scraper` on 2026-04-23.
 
-## リポジトリ
+## Repositories
 
-- 本 repo: `/Users/komagata/Works/retronian/retronian-scraper/`
+- This repo: `/home/komagata/Works/retronian/retronian-scraper/`
 - GitHub: https://github.com/retronian/retronian-scraper (public, Apache-2.0)
-- 姉妹 repo: `/Users/komagata/Works/retronian/native-game-db/` (Ruby 製、データソース)
+- Sister repo: `/home/komagata/Works/retronian/retronian-gamedb/` (Ruby data source)
 
-## 技術スタック
+## Stack
 
-- 言語: **Go 1.26.2**
-- GUI: **Fyne v2.7.3** (CGO 必要、OpenGL ベース)
-- 配布: `go build` で single static binary (現状 33MB)
-- DB アクセス: `https://gamedb.retronian.com/api/v1/{platform}.json` (JSON、ライブで叩ける)
-- マッチング: 3-tier (SHA1 一次 / slug 二次 (未実装) / CRC32+MD5 fallback)
-- 対象 OS: Linux / Windows / macOS
-- 対象 ROM platform (10 種): `fc, sfc, gb, gbc, gba, md, pce, n64, nds, ps1`
+- Language: **Go 1.26.2**
+- GUI: **Fyne v2.7.3** (requires CGO, OpenGL based)
+- Distribution: single binary through `go build`
+- DB access: `https://gamedb.retronian.com/api/v1/{platform}.json`
+- Matching: 3-tier matching (SHA1 primary / slug secondary, not implemented / CRC32+MD5 fallback)
+- Target OS: Linux / Windows / macOS
+- Target ROM platforms: `fc`, `sfc`, `gb`, `gbc`, `gba`, `md`, `pce`, `n64`, `nds`, `ps1`
 
-## 主要パス
+## Main Paths
 
-```
-cmd/retronian-scraper/main.go        エントリ (CLI/GUI dispatch)
-internal/scan/                       ROM walker + 並列ハッシュ計算
-internal/db/                         native-game-db API クライアント
+```text
+cmd/retronian-scraper/main.go        CLI/GUI entry point
+internal/scan/                       ROM walker and parallel hashing
+internal/db/                         native-game-db API client
 internal/match/                      3-tier matcher
 internal/export/                     ES-DE gamelist.xml exporter
-internal/pipeline/                   scan → hash → fetch → match の共通パイプライン
-internal/cli/                        scan / normalize CLI サブコマンド
+internal/pipeline/                   shared scan -> hash -> fetch -> match pipeline
+internal/cli/                        scan / normalize CLI subcommands
 internal/gui/                        Fyne GUI
-internal/normalize/                  ROM フォルダ名正規化 (6 frontend)
+internal/normalize/                  ROM folder and file name normalization
 ```
 
-## 実装フェーズ
+## Implementation Phases
 
-### Phase 0 ✅ プロジェクト基盤 (commit `f833f84`)
-- Go module init、Fyne hello-world で macOS の CJK 表示を検証
+### Phase 0 Complete: Project Foundation
 
-### Phase 1 ✅ CLI core pipeline (commit `9a31d6b`)
-- ROM walker、並列 SHA1/MD5/CRC32 hasher
-- native-game-db API client
-- 3-tier matcher (SHA1 / hash fallback)
-- ES-DE gamelist.xml exporter (`PickTitle` は verified Jpan > Hira/Kana > ja > first)
-- `scan` CLI サブコマンド
+- Initialized the Go module.
+- Verified CJK rendering with a Fyne hello-world build.
 
-### Phase 2 ✅ GUI 最小版 + pipeline 抽出 (commit `fa53a6e`)
-- `internal/pipeline/` 抽出 (CLI/GUI 共通)
-- Fyne GUI: platform 選択 / ROM フォルダ選択 / scan ボタン / 進捗バー / 結果テーブル / gamelist.xml 書き出し
+### Phase 1 Complete: CLI Core Pipeline
 
-### Phase 2.5 ✅ ROM フォルダ名正規化 (commit `552c15a`)
-- `internal/normalize/` 新規パッケージ
-- 6 frontend (es-de / onion / minui / unuui / batocera / recalbox) の公式フォルダ名にリネーム
-- alias 主・拡張子分布補助で内部 ID 判定
-- `normalize` CLI サブコマンド (dry-run デフォルト + `--apply`)
-- ユニットテスト 30 件グリーン
+- ROM walker and parallel SHA1/MD5/CRC32 hasher.
+- native-game-db API client.
+- 3-tier matcher (SHA1 / hash fallback currently implemented).
+- ES-DE `gamelist.xml` exporter. `PickTitle` order is verified Jpan > Hira/Kana > ja > first.
+- `scan` CLI subcommand.
 
-### 次のタスク候補
+### Phase 2 Complete: Minimal GUI and Pipeline Extraction
 
-1. **実 ROM で検証** — 手元の本物 ROM で `scan` の matched N/M を確認、不具合修正
-2. **Phase 3** — 手動 ID override、boxart サムネプレビュー、region 切替
-3. **Phase 4** — GitHub Actions で 3 OS リリースバイナリ自動ビルド
-4. **MinUI / OnionOS export** — 現状 ES-DE のみ
-5. **GUI に normalize 統合** — Phase 2.5 の `normalize.BuildPlan` / `Apply` をプレビュー UI で
+- Extracted `internal/pipeline/` for shared CLI/GUI use.
+- Added a Fyne GUI with platform selection, ROM folder picker, scan button, progress bar, results table, and `gamelist.xml` export.
 
-## ビルド・テスト・実行
+### Phase 2.5 Complete: ROM Folder Name Normalization
+
+- Added `internal/normalize/`.
+- Supports official folder-name profiles for `es-de`, `onion`, `minui`, `unuui`, `batocera`, and `recalbox`.
+- Supports localized folder names through `normalize --lang <lang>` where the frontend profile provides them. Current folder-name languages are `de`, `en`, `es`, `fr`, `ja`, `ko`, and `zh`.
+- Detects internal platform IDs through aliases with extension-distribution assistance.
+- Added the `normalize` CLI subcommand with dry-run default and `--apply`.
+
+### Current Status
+
+Phase 2.6: minimal GUI plus ROM folder and file name normalization.
+
+## Build, Test, Run
 
 ```bash
-# ビルド (CGO 必要、Xcode CLI tools が入ってれば OK)
+# Build
 go build -o retronian-scraper ./cmd/retronian-scraper
 
-# 全パッケージのビルド・vet・テスト
+# Build, vet, and test all packages
 go build ./... && go vet ./... && go test ./...
 
-# GUI 起動
+# Start the GUI
 ./retronian-scraper
 
 # CLI scan
 ./retronian-scraper scan --platform gb --out gamelist.xml /path/to/roms
 
-# CLI normalize (dry-run)
+# CLI normalize dry run
 ./retronian-scraper normalize --frontend es-de /path/to/Roms
 
-# CLI normalize (実行)
+# CLI normalize apply
 ./retronian-scraper normalize --frontend es-de --apply /path/to/Roms
+
+# CLI normalize with localized folder names
+./retronian-scraper normalize --frontend minui --lang ja --apply /path/to/Roms
 ```
 
-**重要**: Go 標準 `flag` パッケージの仕様で **positional 引数は flag より後ろ** に置く必要がある。`./retronian-scraper scan /path --platform gb` は parse 失敗するので注意。
+Important: Go's standard `flag` package requires positional arguments to appear after flags. `./retronian-scraper scan /path --platform gb` will not parse as intended.
 
-## 既知の未解決事項 / 注意点
+## Known Issues and Notes
 
-- **slug tier (Tier 2)**: `internal/match/matcher.go` にコメントだけあり未実装。SHA1 でほぼマッチするので優先度低だが ROM hacker 向け collection だと効く
-- **CGO 依存**: Fyne が OpenGL 使用のため CGO 必要。Linux ビルドは X11 dev libs、Windows は MinGW 要。GitHub Actions で 3 OS runner 推奨
-- **macOS Gatekeeper / notarize**: 未対応。初回起動で「開発元未確認」警告が出る。README に対処手順を書くか Apple Developer Program を購入するか判断が必要
-- **`.app` bundle と `Icon.png`**: プレースホルダ。後でデザインしたアイコンに差し替え必要
-- **ライセンス attribution**: native-game-db データは Wikipedia 由来 (CC BY-SA 4.0)。`gamelist.xml` に attribution、GUI About に表記する TODO あり
-- **deprecated `fyne` CLI**: `go install fyne.io/fyne/v2/cmd/fyne@latest` は deprecated 警告。新しい `fyne.io/tools/cmd/fyne` への移行を推奨
-- **unuui / recalbox の normalize profile**: 現状暫定 (minui / batocera と同一)。実機検証後に分離する TODO コメントあり (`internal/normalize/profile.go`)
-- **MinUI / OnionOS の n64 (および MinUI の nds)**: frontend 公式に未対応 → fallback で内部 ID をフォルダ名に使う
+- **Slug tier (Tier 2)**: referenced in `internal/match/matcher.go` but not implemented. SHA1 handles most matches, so this is lower priority unless ROM-hacker collections become important.
+- **CGO dependency**: Fyne uses OpenGL and requires CGO. Linux builds need X11 dev libraries; Windows builds need MinGW. GitHub Actions should use three OS runners.
+- **macOS Gatekeeper / notarization**: not handled yet. First launch may show an unidentified developer warning.
+- **`.app` bundle and `Icon.png`**: placeholders that need replacement with final design assets.
+- **License attribution**: native-game-db data derives from Wikipedia under CC BY-SA 4.0. `gamelist.xml` and GUI About attribution are still TODO.
+- **Deprecated `fyne` CLI**: `go install fyne.io/fyne/v2/cmd/fyne@latest` shows a deprecation warning. Prefer migrating to `fyne.io/tools/cmd/fyne`.
+- **`unuui` / `recalbox` normalize profiles**: currently provisional and aligned with `minui` / `batocera`. Split after hardware verification if needed.
+- **MinUI / OnionOS unsupported platforms**: `n64` and MinUI `nds` fall back to the internal ID as the folder name.
 
-## コーディング・コミュニケーション規約
+## Coding and Communication Rules
 
-- **会話言語**: 日本語 (komagata さんの明示指示)
-- **コードコメント**: 最小限。WHY が非自明な場合のみ。WHAT は自明な命名で済ませる
-- **README、user-facing 文言**: 日本語 OK
-- **commit message**: 英語、`type: subject` 形式 (`feat:`, `fix:`, `chore:`, `refactor:`, `docs:`)、本文で詳細
-- **ブランチ**: 当面 `main` 直 commit (1 人開発、PR フローはまだ無い)
-- **commit 単位**: 機能ごとに 1 commit。Phase 区切りで段階的に push 済み
+- Conversation language with komagata: Japanese unless asked otherwise.
+- Code comments: keep them minimal. Use comments for non-obvious why, not obvious what.
+- README and user-facing text: English.
+- Commit messages: English, `type: subject` format such as `feat:`, `fix:`, `chore:`, `refactor:`, or `docs:`.
+- Branching: direct commits to `main` for now.
+- Commit scope: one feature or coherent change per commit.
 
-## ユーザー (komagata さん) について
+## User Context
 
-- レトロゲーム × 日本語ネイティブスクリプト対応に詳しい (retronian/native-game-db の主要コントリビュータ)
-- `retronian` GitHub org のオーナー
-- `gh` CLI に retronian / komagata 両アカウントを保持、active は retronian
+- komagata is familiar with retro games and Japanese native-script metadata.
+- komagata owns the `retronian` GitHub organization.
+- The `gh` CLI may have both `retronian` and `komagata` accounts; the active account should be `retronian`.
 
-## セッション開始時の確認事項
+## Session Start Checklist
 
-1. 本ファイル (`CLAUDE.md`) を読む
-2. `git log --oneline` で最新 commit を把握
-3. `git status` で進行中の作業がないか確認
-4. komagata さんに「次のタスク候補」から優先順を確認
+1. Read this file.
+2. Run `git log --oneline` to understand recent commits.
+3. Run `git status` to check for in-progress work.
+4. Continue from the user's latest instruction.
 
-## 参考: native-game-db (姉妹プロジェクト)
+## retronian-gamedb Reference
 
-- Ruby 製の静的 API generator
-- `data/`: ゲームデータ (YAML)
-- `schema/game.schema.json`: platform ID enum (本 repo の 10 ID と同一)
-- `scripts/build_api.rb`: `PLATFORMS` ハッシュで platform ID と表示名を持つ
-- 公開 API: `https://gamedb.retronian.com/api/v1/{platform}.json`
-- ライセンス: dual (CODE = MIT, DATA = CC BY-SA 4.0)
+- Ruby static API generator.
+- `data/`: game data in YAML.
+- `schema/game.schema.json`: platform ID enum, matching this repo's 10 platform IDs.
+- `scripts/build_api.rb`: has the `PLATFORMS` mapping with platform IDs and display names.
+- Public API: `https://gamedb.retronian.com/api/v1/{platform}.json`
+- License: CODE = MIT, DATA = CC BY-SA 4.0.

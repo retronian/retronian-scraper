@@ -22,13 +22,14 @@ func runNormalize(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("normalize", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	frontend := fs.String("frontend", "", "frontend id ("+strings.Join(normalize.KnownFrontends(), ", ")+")")
+	langFlag := fs.String("lang", "en", "folder name language ("+strings.Join(normalize.KnownLanguages(), ", ")+")")
 	apply := fs.Bool("apply", false, "perform rename (default: dry-run)")
 	files := fs.Bool("files", false, "normalize ROM filenames instead of platform folders")
 	platform := fs.String("platform", "", "platform id for --files")
 	format := fs.String("format", "raw", "file output format for --files (raw, zip)")
 	baseURL := fs.String("api", db.DefaultBaseURL, "native-game-db API base URL for --files")
 	fs.Usage = func() {
-		fmt.Fprintln(stderr, "usage: retronian-scraper normalize <dir> --frontend <id> [--files --platform <id> --format raw|zip] [--apply]")
+		fmt.Fprintln(stderr, "usage: retronian-scraper normalize <dir> --frontend <id> [--lang <lang>] [--files --platform <id> --format raw|zip] [--apply]")
 		fs.PrintDefaults()
 	}
 	if err := fs.Parse(args); err != nil {
@@ -44,11 +45,16 @@ func runNormalize(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, err)
 		return 2
 	}
+	lang, err := normalize.ParseLanguage(*langFlag)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 2
+	}
 	if *files {
 		return runNormalizeFiles(fs.Arg(0), profile, *platform, *format, *baseURL, *apply, stdout, stderr)
 	}
 
-	plan, err := normalize.BuildPlan(fs.Arg(0), profile)
+	plan, err := normalize.BuildPlanForLanguage(fs.Arg(0), profile, lang)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return 1
@@ -58,7 +64,7 @@ func runNormalize(args []string, stdout, stderr io.Writer) int {
 	if *apply {
 		mode = "applying"
 	}
-	fmt.Fprintf(stdout, "normalize: %s %s (frontend=%s)\n\n", mode, plan.ROMParentDir, profile.ID)
+	fmt.Fprintf(stdout, "normalize: %s %s (frontend=%s, lang=%s)\n\n", mode, plan.ROMParentDir, profile.ID, lang)
 
 	res, err := normalize.Apply(plan, !*apply, nil)
 	if err != nil {

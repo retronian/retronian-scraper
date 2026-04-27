@@ -130,7 +130,8 @@ func classifyFile(opts FileOptions, r match.Result) FileAction {
 		zipName := strings.TrimSuffix(rawName, filepath.Ext(rawName)) + ".zip"
 		a.Target = filepath.Join(dir, zipName)
 		if srcIsZip {
-			if sameCleanPath(r.Path, a.Target) {
+			a.InnerSource = zipInnerName(r.Path)
+			if sameCleanPath(r.Path, a.Target) && a.InnerSource == a.InnerTarget {
 				a.Operation = FileOpNoop
 				a.Status = StatusNoop
 				return a

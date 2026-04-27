@@ -69,15 +69,15 @@ func Run() {
 		fyne.TextAlignLeading,
 		fyne.TextStyle{Bold: true},
 	)
-	subtitle := widget.NewLabel("多言語 ROM スクレイパー — native-game-db consumer")
+	subtitle := widget.NewLabel("Multilingual ROM scraper - native-game-db consumer")
 
 	platformSel := widget.NewSelect(platforms, nil)
 	platformSel.SetSelected("gb")
 
-	romDirLabel := widget.NewLabel("(未選択)")
+	romDirLabel := widget.NewLabel("(not selected)")
 	romDirLabel.Wrapping = fyne.TextTruncate
 
-	browseBtn := widget.NewButton("ROM フォルダを選択...", func() {
+	browseBtn := widget.NewButton("Select ROM Folder...", func() {
 		dialog.ShowFolderOpen(func(uri fyne.ListableURI, err error) {
 			if err != nil {
 				dialog.ShowError(err, w)
@@ -93,7 +93,7 @@ func Run() {
 		}, w)
 	})
 
-	status := widget.NewLabel("準備完了")
+	status := widget.NewLabel("Ready")
 	progress := widget.NewProgressBar()
 	progress.Hide()
 
@@ -110,11 +110,11 @@ func Run() {
 				lbl.TextStyle = fyne.TextStyle{Bold: true}
 				switch id.Col {
 				case 0:
-					lbl.SetText("ファイル")
+					lbl.SetText("File")
 				case 1:
-					lbl.SetText("マッチ")
+					lbl.SetText("Match")
 				case 2:
-					lbl.SetText("タイトル")
+					lbl.SetText("Title")
 				}
 				return
 			}
@@ -144,26 +144,26 @@ func Run() {
 
 	var scanBtn, exportBtn *widget.Button
 
-	scanBtn = widget.NewButton("スキャン実行", func() {
+	scanBtn = widget.NewButton("Scan", func() {
 		state.mu.Lock()
 		dir := state.romDir
 		state.mu.Unlock()
 		if dir == "" {
-			dialog.ShowInformation("選択が必要", "ROM フォルダを選択してください", w)
+			dialog.ShowInformation("Selection Required", "Select a ROM folder.", w)
 			return
 		}
 		platform := platformSel.Selected
 		if platform == "" {
-			dialog.ShowInformation("選択が必要", "プラットフォームを選択してください", w)
+			dialog.ShowInformation("Selection Required", "Select a platform.", w)
 			return
 		}
 		go runScan(w, platform, dir, state, table, status, progress, scanBtn, exportBtn)
 	})
 
-	exportBtn = widget.NewButton("gamelist.xml を書き出し", func() {
+	exportBtn = widget.NewButton("Export gamelist.xml", func() {
 		out := state.snapshot()
 		if out == nil || len(out.Results) == 0 {
-			dialog.ShowInformation("未スキャン", "先にスキャンを実行してください", w)
+			dialog.ShowInformation("No Scan Results", "Run a scan first.", w)
 			return
 		}
 		save := dialog.NewFileSave(func(uri fyne.URIWriteCloser, err error) {
@@ -179,8 +179,8 @@ func Run() {
 				dialog.ShowError(werr, w)
 				return
 			}
-			matched := out.TierCount[match.TierSHA1] + out.TierCount[match.TierSlug] + out.TierCount[match.TierHashFallback]
-			status.SetText(fmt.Sprintf("書き出し完了: %s (%d 件)", uri.URI().Path(), matched))
+			matched := out.TierCount[match.TierSHA1] + out.TierCount[match.TierSlug] + out.TierCount[match.TierHashFallback] + out.TierCount[match.TierNameFallback]
+			status.SetText(fmt.Sprintf("Export complete: %s (%d entries)", uri.URI().Path(), matched))
 		}, w)
 		save.SetFileName("gamelist.xml")
 		save.Show()
@@ -188,8 +188,8 @@ func Run() {
 	exportBtn.Disable()
 
 	controls := container.NewVBox(
-		container.NewBorder(nil, nil, widget.NewLabel("プラットフォーム:"), nil, platformSel),
-		container.NewBorder(nil, nil, widget.NewLabel("ROM フォルダ:"), browseBtn, romDirLabel),
+		container.NewBorder(nil, nil, widget.NewLabel("Platform:"), nil, platformSel),
+		container.NewBorder(nil, nil, widget.NewLabel("ROM Folder:"), browseBtn, romDirLabel),
 		container.NewHBox(scanBtn, exportBtn),
 		progress,
 	)
@@ -224,7 +224,7 @@ func runScan(
 		table.Refresh()
 		progress.Show()
 		progress.SetValue(0)
-		status.SetText("スキャン開始...")
+		status.SetText("Starting scan...")
 	})
 
 	output, err := pipeline.Run(context.Background(), pipeline.Options{
@@ -241,19 +241,20 @@ func runScan(
 			dialog.ShowError(err, w)
 			scanBtn.Enable()
 			progress.Hide()
-			status.SetText("エラー: " + err.Error())
+			status.SetText("Error: " + err.Error())
 		})
 		return
 	}
 
 	state.setOutput(output)
 
-	matched := output.TierCount[match.TierSHA1] + output.TierCount[match.TierSlug] + output.TierCount[match.TierHashFallback]
+	matched := output.TierCount[match.TierSHA1] + output.TierCount[match.TierSlug] + output.TierCount[match.TierHashFallback] + output.TierCount[match.TierNameFallback]
 	summary := fmt.Sprintf(
-		"マッチ %d/%d (sha1=%d, hash=%d, 未マッチ=%d)",
+		"Matched %d/%d (sha1=%d, hash=%d, name=%d, unmatched=%d)",
 		matched, len(output.Results),
 		output.TierCount[match.TierSHA1],
 		output.TierCount[match.TierHashFallback],
+		output.TierCount[match.TierNameFallback],
 		output.TierCount[match.TierNone],
 	)
 
@@ -270,31 +271,31 @@ func runScan(
 }
 
 // updateProgress maps pipeline phases onto the bottom progress bar.
-// Hashing占める区間を 0.0〜0.6、DB 取得 0.6〜0.7、マッチング 0.7〜1.0 に割り当てる。
+// Hashing uses 0.0-0.6, DB fetch 0.6-0.7, and matching 0.7-1.0.
 func updateProgress(progress *widget.ProgressBar, status *widget.Label, p pipeline.Progress) {
 	switch p.Phase {
 	case pipeline.PhaseWalking:
 		if p.Total > 0 {
-			status.SetText(fmt.Sprintf("ROM 検出: %d 個", p.Total))
+			status.SetText(fmt.Sprintf("ROMs found: %d", p.Total))
 		} else {
-			status.SetText("ROM ディレクトリを走査中...")
+			status.SetText("Scanning ROM directory...")
 		}
 	case pipeline.PhaseHashing:
 		if p.Total > 0 {
-			status.SetText(fmt.Sprintf("ハッシュ計算中 %d/%d", p.Done, p.Total))
+			status.SetText(fmt.Sprintf("Hashing %d/%d", p.Done, p.Total))
 			progress.SetValue(float64(p.Done) / float64(p.Total) * 0.6)
 		}
 	case pipeline.PhaseFetching:
 		if p.Done == 0 {
-			status.SetText("DB 取得中: " + p.Msg)
+			status.SetText("Fetching DB: " + p.Msg)
 			progress.SetValue(0.65)
 		} else {
-			status.SetText(fmt.Sprintf("DB %d 件取得", p.Total))
+			status.SetText(fmt.Sprintf("Fetched %d DB entries", p.Total))
 			progress.SetValue(0.7)
 		}
 	case pipeline.PhaseMatching:
 		if p.Total > 0 {
-			status.SetText(fmt.Sprintf("マッチング %d/%d", p.Done, p.Total))
+			status.SetText(fmt.Sprintf("Matching %d/%d", p.Done, p.Total))
 			progress.SetValue(0.7 + float64(p.Done)/float64(p.Total)*0.3)
 		}
 	case pipeline.PhaseDone:
@@ -310,6 +311,8 @@ func tierLabel(t match.Tier) string {
 		return "slug"
 	case match.TierHashFallback:
 		return "hash"
+	case match.TierNameFallback:
+		return "name"
 	default:
 		return "—"
 	}
