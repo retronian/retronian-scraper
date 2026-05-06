@@ -250,9 +250,10 @@ func runScan(
 
 	matched := output.TierCount[match.TierSHA1] + output.TierCount[match.TierSlug] + output.TierCount[match.TierHashFallback] + output.TierCount[match.TierNameFallback]
 	summary := fmt.Sprintf(
-		"Matched %d/%d (sha1=%d, hash=%d, name=%d, unmatched=%d)",
+		"マッチ %d/%d (sha1=%d, slug=%d, hash=%d, name=%d, 未マッチ=%d)",
 		matched, len(output.Results),
 		output.TierCount[match.TierSHA1],
+		output.TierCount[match.TierSlug],
 		output.TierCount[match.TierHashFallback],
 		output.TierCount[match.TierNameFallback],
 		output.TierCount[match.TierNone],

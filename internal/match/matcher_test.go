@@ -146,6 +146,73 @@ func TestMatcher_NameFallbackUsesGameTitles(t *testing.T) {
 	}
 }
 
+func TestMatcher_NameFallbackUsesJapaneseTitles(t *testing.T) {
+	games := []db.Game{{
+		ID: "harvest-moon-back-to-nature",
+		Titles: []db.Title{{
+			Text: "牧場物語 ハーベストムーン",
+		}},
+	}}
+
+	got := New(games).Match("/roms/牧場物語 〜ハーベストムーン〜.chd", scan.Hashes{})
+	if got.Tier != TierNameFallback {
+		t.Fatalf("tier: want name fallback, got %v", got.Tier)
+	}
+	if got.Game == nil || got.Game.ID != "harvest-moon-back-to-nature" {
+		t.Fatalf("game: got %#v", got.Game)
+	}
+}
+
+func TestMatcher_NameFallbackSkipsAmbiguousTitles(t *testing.T) {
+	games := []db.Game{
+		{
+			ID: "first",
+			Titles: []db.Title{{
+				Text: "Same Name",
+			}},
+		},
+		{
+			ID: "second",
+			Titles: []db.Title{{
+				Text: "Same Name",
+			}},
+		},
+	}
+
+	got := New(games).Match("/roms/Same Name.chd", scan.Hashes{})
+	if got.Tier != TierNone {
+		t.Fatalf("tier: want none for ambiguous title, got %v", got.Tier)
+	}
+}
+
+func TestMatcher_NameFallbackPrefersGameWithROMsOverMetadataOnlyDuplicate(t *testing.T) {
+	games := []db.Game{
+		{
+			ID: "metadata-only",
+			Titles: []db.Title{{
+				Text: "スーパーロボット大戦α",
+			}},
+		},
+		{
+			ID: "with-roms",
+			Titles: []db.Title{{
+				Text: "スーパーロボット大戦α",
+			}},
+			ROMs: []db.ROM{{
+				Name: "Super Robot Taisen Alpha (Japan)",
+			}},
+		},
+	}
+
+	got := New(games).Match("/roms/スーパーロボット大戦α.chd", scan.Hashes{})
+	if got.Tier != TierNameFallback {
+		t.Fatalf("tier: want name fallback, got %v", got.Tier)
+	}
+	if got.Game == nil || got.Game.ID != "with-roms" {
+		t.Fatalf("game: got %#v", got.Game)
+	}
+}
+
 func writeZip(path, name string, data []byte) error {
 	out, err := os.Create(path)
 	if err != nil {

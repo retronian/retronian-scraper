@@ -40,9 +40,10 @@ func Scan(args []string) int {
 	}
 
 	matched := output.TierCount[match.TierSHA1] + output.TierCount[match.TierSlug] + output.TierCount[match.TierHashFallback] + output.TierCount[match.TierNameFallback]
-	fmt.Printf("matched %d/%d (sha1=%d, fallback_hash=%d, name=%d, unmatched=%d)\n",
+	fmt.Printf("matched %d/%d (sha1=%d, slug=%d, fallback_hash=%d, name=%d, unmatched=%d)\n",
 		matched, len(output.Results),
 		output.TierCount[match.TierSHA1],
+		output.TierCount[match.TierSlug],
 		output.TierCount[match.TierHashFallback],
 		output.TierCount[match.TierNameFallback],
 		output.TierCount[match.TierNone],

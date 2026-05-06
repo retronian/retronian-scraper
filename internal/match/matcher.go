@@ -3,11 +3,13 @@ package match
 import (
 	"archive/zip"
 	"path/filepath"
-	"regexp"
 	"strings"
+	"unicode"
 
 	"github.com/retronian/retronian-scraper/internal/db"
 	"github.com/retronian/retronian-scraper/internal/scan"
+	"golang.org/x/text/unicode/norm"
+	"golang.org/x/text/width"
 )
 
 type Tier int
@@ -36,21 +38,20 @@ type matchedROM struct {
 type Matcher struct {
 	games    []db.Game
 	sha1Idx  map[string]matchedROM
+	nameIdx  map[string]matchedROM
 	crc32Idx map[string]matchedROM
 	md5Idx   map[string]matchedROM
-	nameIdx  map[string]matchedROM
 }
-
-var separatorRE = regexp.MustCompile(`\s+`)
 
 func New(games []db.Game) *Matcher {
 	m := &Matcher{
 		games:    games,
 		sha1Idx:  make(map[string]matchedROM, len(games)*2),
+		nameIdx:  make(map[string]matchedROM, len(games)*4),
 		crc32Idx: make(map[string]matchedROM, len(games)*2),
 		md5Idx:   make(map[string]matchedROM, len(games)*2),
-		nameIdx:  make(map[string]matchedROM, len(games)*2),
 	}
+	ambiguousNames := map[string]struct{}{}
 	for i := range games {
 		g := &games[i]
 		for j := range g.ROMs {
@@ -59,20 +60,16 @@ func New(games []db.Game) *Matcher {
 			if v := strings.ToLower(r.SHA1); v != "" {
 				m.sha1Idx[v] = match
 			}
+			addNameMatch(m.nameIdx, ambiguousNames, canonicalROMName(r.Name), match)
 			if v := strings.ToLower(r.CRC32); v != "" {
 				m.crc32Idx[v] = match
 			}
 			if v := strings.ToLower(r.MD5); v != "" {
 				m.md5Idx[v] = match
 			}
-			if v := canonicalROMName(r.Name); v != "" {
-				m.nameIdx[v] = match
-			}
 		}
 		for j := range g.Titles {
-			if v := canonicalROMName(g.Titles[j].Text); v != "" {
-				m.nameIdx[v] = matchedROM{game: g}
-			}
+			addNameMatch(m.nameIdx, ambiguousNames, canonicalROMName(g.Titles[j].Text), matchedROM{game: g})
 		}
 	}
 	return m
@@ -107,6 +104,29 @@ func (m *Matcher) Match(path string, h scan.Hashes) Result {
 	return r
 }
 
+func addNameMatch(idx map[string]matchedROM, ambiguous map[string]struct{}, key string, match matchedROM) {
+	if key == "" {
+		return
+	}
+	if existing, exists := idx[key]; exists {
+		if existing.game != match.game {
+			if len(existing.game.ROMs) == 0 && len(match.game.ROMs) > 0 {
+				idx[key] = match
+				return
+			}
+			if len(existing.game.ROMs) > 0 && len(match.game.ROMs) == 0 {
+				return
+			}
+			delete(idx, key)
+			ambiguous[key] = struct{}{}
+		}
+		return
+	}
+	if _, ok := ambiguous[key]; !ok {
+		idx[key] = match
+	}
+}
+
 func matchName(path string) string {
 	if strings.EqualFold(filepath.Ext(path), ".zip") {
 		return firstZipEntryName(path)
@@ -137,19 +157,18 @@ func canonicalROMName(name string) string {
 	for {
 		ext := strings.ToLower(filepath.Ext(name))
 		switch ext {
-		case ".zip", ".7z", ".nes", ".fds", ".sfc", ".smc", ".gb", ".gbc", ".gba", ".md", ".gen", ".smd", ".pce", ".chd", ".cue", ".bin", ".iso":
+		case ".zip", ".7z", ".nes", ".fds", ".sfc", ".smc", ".gb", ".gbc", ".gba", ".md", ".gen", ".smd", ".bin", ".pce", ".n64", ".z64", ".v64", ".nds", ".iso", ".cue", ".img", ".chd", ".pbp":
 			name = strings.TrimSpace(strings.TrimSuffix(name, filepath.Ext(name)))
 		default:
 			name = stripTrailingRegionTags(name)
-			name = strings.NewReplacer(
-				"：", " ",
-				":", " ",
-				" - ", " ",
-				" – ", " ",
-				" — ", " ",
-			).Replace(name)
-			name = separatorRE.ReplaceAllString(name, " ")
-			return strings.ToLower(strings.TrimSpace(name))
+			name = strings.ToLower(width.Fold.String(norm.NFKC.String(name)))
+			var b strings.Builder
+			for _, r := range name {
+				if unicode.IsLetter(r) || unicode.IsDigit(r) {
+					b.WriteRune(r)
+				}
+			}
+			return b.String()
 		}
 	}
 }
