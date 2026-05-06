@@ -64,6 +64,51 @@ func TestBuildFilePlan_ESDEUsesNoIntroName(t *testing.T) {
 	}
 }
 
+func TestBuildFilePlan_MinUIDisambiguatesDuplicateJapaneseTitle(t *testing.T) {
+	root := t.TempDir()
+	src1 := filepath.Join(root, "Gallop Racer (Japan).chd")
+	src2 := filepath.Join(root, "Gallop Racer 3 (Japan).chd")
+	for _, src := range []string{src1, src2} {
+		if err := os.WriteFile(src, []byte("rom"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	game := &db.Game{
+		ID:     "gallop-racer",
+		Titles: []db.Title{{Text: "ギャロップレーサー", Lang: "ja", Script: "Jpan", Verified: true}},
+	}
+	plan, err := BuildFilePlan(FileOptions{
+		ROMDir:   root,
+		Platform: "ps1",
+		Profile:  Profiles[FrontendUnuOS],
+		Format:   FileFormatRaw,
+	}, []match.Result{
+		{Path: src1, Game: game, ROM: &db.ROM{Name: "Gallop Racer (Japan).chd"}, Tier: match.TierSHA1},
+		{Path: src2, Game: game, ROM: &db.ROM{Name: "Gallop Racer 3 (Japan).chd"}, Tier: match.TierSHA1},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, a := range plan.Actions {
+		if a.Status != StatusRename {
+			t.Fatalf("%s: want rename, got %s (%s)", filepath.Base(a.Source), a.Status, a.Reason)
+		}
+	}
+	got := map[string]bool{}
+	for _, a := range plan.Actions {
+		got[filepath.Base(a.Target)] = true
+	}
+	for _, want := range []string{
+		"ギャロップレーサー (Gallop Racer (Japan)).chd",
+		"ギャロップレーサー (Gallop Racer 3 (Japan)).chd",
+	} {
+		if !got[want] {
+			t.Fatalf("missing target %q in %#v", want, got)
+		}
+	}
+}
+
 func TestApplyFilePlan_ZipRawROM(t *testing.T) {
 	root := t.TempDir()
 	src := filepath.Join(root, "old.gb")
