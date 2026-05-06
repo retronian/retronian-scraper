@@ -66,21 +66,22 @@ If a frontend does not officially support a platform, such as `n64` on MinUI, Re
 Retronian Scraper can match ROM files against native-game-db and rename them for the selected frontend. MinUI / UnuOS prefer Japanese native-script titles; other frontends prefer the database `ROM.name` value, which is based on No-Intro naming.
 
 ```bash
-# MinUI: rename to raw ROM files with Japanese native-script titles.
-./retronian-scraper normalize --files --frontend minui --platform gb --format raw /path/to/Roms/Game\ Boy\ \(GB\)
+# MinUI / UnuOS: rename to raw ROM files with Japanese native-script titles
+# and write cover art to .res/<ROM filename>.png.
+./retronian-scraper normalize --files --frontend unuos --platform gb --format raw --boxart /path/to/Roms/Game\ Boy\ \(GB\)
 
 # ES-DE: rename to No-Intro style one-ROM zip files.
 ./retronian-scraper normalize --files --frontend es-de --platform gb --format zip /path/to/Roms/gb
 
-# Apply actual rename / zip / unzip operations.
-./retronian-scraper normalize --files --frontend es-de --platform gb --format zip --apply /path/to/Roms/gb
+# Apply actual rename / zip / unzip operations, and boxart downloads when --boxart is set.
+./retronian-scraper normalize --files --frontend unuos --platform gb --format raw --boxart --apply /path/to/Roms/Game\ Boy\ \(GB\)
 ```
 
 `--format raw` normalizes to raw ROM files. `--format zip` normalizes to one-ROM zip files. Zip inputs are matched by the ROM inside the archive, not by the outer zip filename.
 
 ## MinUI Cover Art
 
-MinUI supports cover art in a `.res` directory inside each platform folder. Retronian Scraper provides a helper script that downloads the best available box art for matched ROMs and writes files in MinUI's existing cover art layout:
+MinUI and UnuOS support cover art in a `.res` directory inside each platform folder. Use `normalize --files --boxart` to download the best available box art for matched ROMs and write files in MinUI's existing cover art layout:
 
 ```text
 <platform folder>/.res/<ROM filename>.png
@@ -92,13 +93,7 @@ Example:
 ファミリーコンピュータ (FC)/.res/メジャーリーグ.zip.png
 ```
 
-Run it with a ROM root and a GameDB API base URL:
-
-```bash
-go run ./scripts/download_minui_boxart.go /path/to/Roms https://gamedb.retronian.com
-```
-
-The downloader skips existing images, skips unmatched ROMs, and reports missing media or HTTP failures.
+`--boxart` skips existing images, skips unmatched ROMs, and reports missing media or HTTP failures. Dry-run mode reports the ROM changes and boxart plan without writing files.
 
 Notes:
 

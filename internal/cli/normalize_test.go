@@ -2,10 +2,16 @@ package cli
 
 import (
 	"bytes"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/retronian/retronian-scraper/internal/db"
+	"github.com/retronian/retronian-scraper/internal/match"
+	"github.com/retronian/retronian-scraper/internal/normalize"
 )
 
 // Note: Go's standard flag package stops parsing at the first non-flag
@@ -135,5 +141,43 @@ func TestNormalize_UnknownLang(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), "unknown language") {
 		t.Errorf("stderr missing unknown language:\n%s", stderr.String())
+	}
+}
+
+func TestApplyMinUIBoxartUsesTargetROMName(t *testing.T) {
+	root := t.TempDir()
+	rom := filepath.Join(root, "old.gb")
+	if err := os.WriteFile(rom, []byte("rom"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if _, err := w.Write([]byte("png")); err != nil {
+			t.Fatal(err)
+		}
+	}))
+	defer server.Close()
+
+	plan := &normalize.FilePlan{
+		ROMDir: root,
+		Actions: []normalize.FileAction{{
+			Source: rom,
+			Target: filepath.Join(root, "日本語.gb"),
+			Status: normalize.StatusRename,
+			Result: match.Result{Game: &db.Game{
+				Media: []db.Media{{Kind: "boxart", URL: server.URL + "/cover.png"}},
+			}},
+		}},
+	}
+
+	var stderr bytes.Buffer
+	res := applyMinUIBoxart(plan, false, &stderr)
+	if res.Failed != 0 {
+		t.Fatalf("failed=%d stderr=%s", res.Failed, stderr.String())
+	}
+	if res.Written != 1 {
+		t.Fatalf("written=%d, want 1", res.Written)
+	}
+	if got, err := os.ReadFile(filepath.Join(root, ".res", "日本語.gb.png")); err != nil || string(got) != "png" {
+		t.Fatalf("boxart bytes=%q err=%v", string(got), err)
 	}
 }

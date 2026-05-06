@@ -5,11 +5,14 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/retronian/retronian-scraper/internal/db"
+	"github.com/retronian/retronian-scraper/internal/export"
 	"github.com/retronian/retronian-scraper/internal/normalize"
 	"github.com/retronian/retronian-scraper/internal/pipeline"
 )
@@ -27,9 +30,10 @@ func runNormalize(args []string, stdout, stderr io.Writer) int {
 	files := fs.Bool("files", false, "normalize ROM filenames instead of platform folders")
 	platform := fs.String("platform", "", "platform id for --files")
 	format := fs.String("format", "raw", "file output format for --files (raw, zip)")
+	boxart := fs.Bool("boxart", false, "write MinUI/UnuOS boxart to .res when used with --files")
 	baseURL := fs.String("api", db.DefaultBaseURL, "native-game-db API base URL for --files")
 	fs.Usage = func() {
-		fmt.Fprintln(stderr, "usage: retronian-scraper normalize <dir> --frontend <id> [--lang <lang>] [--files --platform <id> --format raw|zip] [--apply]")
+		fmt.Fprintln(stderr, "usage: retronian-scraper normalize <dir> --frontend <id> [--lang <lang>] [--files --platform <id> --format raw|zip --boxart] [--apply]")
 		fs.PrintDefaults()
 	}
 	if err := fs.Parse(args); err != nil {
@@ -51,7 +55,7 @@ func runNormalize(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	if *files {
-		return runNormalizeFiles(fs.Arg(0), profile, *platform, *format, *baseURL, *apply, stdout, stderr)
+		return runNormalizeFiles(fs.Arg(0), profile, *platform, *format, *baseURL, *boxart, *apply, stdout, stderr)
 	}
 
 	plan, err := normalize.BuildPlanForLanguage(fs.Arg(0), profile, lang)
@@ -87,9 +91,13 @@ func runNormalize(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-func runNormalizeFiles(romDir string, profile normalize.Profile, platformID, formatID, baseURL string, apply bool, stdout, stderr io.Writer) int {
+func runNormalizeFiles(romDir string, profile normalize.Profile, platformID, formatID, baseURL string, boxart bool, apply bool, stdout, stderr io.Writer) int {
 	if platformID == "" {
 		fmt.Fprintln(stderr, "--platform is required with --files")
+		return 2
+	}
+	if boxart && profile.ID != normalize.FrontendMinUI && profile.ID != normalize.FrontendUnuOS {
+		fmt.Fprintln(stderr, "--boxart is only supported for minui and unuos")
 		return 2
 	}
 	format, err := normalize.ParseFileFormat(formatID)
@@ -136,11 +144,19 @@ func runNormalizeFiles(romDir string, profile normalize.Profile, platformID, for
 	}
 	fmt.Fprintln(stdout)
 	fmt.Fprintln(stdout, formatFileSummary(res, apply))
+
+	boxartFailed := 0
+	if boxart {
+		boxartRes := applyMinUIBoxart(plan, !apply, stderr)
+		boxartFailed = boxartRes.Failed
+		fmt.Fprintln(stdout)
+		fmt.Fprintln(stdout, formatBoxartSummary(boxartRes, apply))
+	}
 	if !apply && len(res.Changed) > 0 {
 		fmt.Fprintln(stdout, "re-run with --apply to perform file changes")
 	}
 
-	if len(res.Conflicts) > 0 || len(res.Errors) > 0 {
+	if len(res.Conflicts) > 0 || len(res.Errors) > 0 || boxartFailed > 0 {
 		return 1
 	}
 	return 0
@@ -248,4 +264,106 @@ func formatFileSummary(res *normalize.FileResult, applied bool) string {
 		parts = append(parts, fmt.Sprintf("%d error", len(res.Errors)))
 	}
 	return "summary: " + strings.Join(parts, ", ")
+}
+
+type boxartResult struct {
+	Planned    int
+	Written    int
+	Existing   int
+	NoMedia    int
+	Unmatched  int
+	Skipped    int
+	Failed     int
+	DryRunPath []string
+}
+
+func applyMinUIBoxart(plan *normalize.FilePlan, dryRun bool, stderr io.Writer) boxartResult {
+	res := boxartResult{}
+	if plan == nil {
+		return res
+	}
+	client := db.NewClient()
+	client.HTTP = &http.Client{Timeout: 30 * time.Second}
+	resDir := filepath.Join(plan.ROMDir, ".res")
+
+	if !dryRun {
+		if err := os.MkdirAll(resDir, 0o755); err != nil {
+			fmt.Fprintf(stderr, "boxart: %v\n", err)
+			res.Failed++
+			return res
+		}
+	}
+
+	for _, a := range plan.Actions {
+		switch a.Status {
+		case normalize.StatusUnknown:
+			res.Unmatched++
+			continue
+		case normalize.StatusSkipped, normalize.StatusConflict:
+			res.Skipped++
+			continue
+		}
+		if a.Result.Game == nil {
+			res.Unmatched++
+			continue
+		}
+		url := export.PickBoxart(a.Result.Game.Media)
+		if url == "" {
+			res.NoMedia++
+			continue
+		}
+		name := filepath.Base(a.Target)
+		if name == "." || name == "" {
+			name = filepath.Base(a.Source)
+		}
+		target := filepath.Join(resDir, name+".png")
+		if _, err := os.Stat(target); err == nil {
+			res.Existing++
+			continue
+		}
+		res.Planned++
+		if dryRun {
+			res.DryRunPath = append(res.DryRunPath, target)
+			continue
+		}
+		b, err := client.FetchMedia(url)
+		if err != nil {
+			fmt.Fprintf(stderr, "boxart: %s: %v\n", name, err)
+			res.Failed++
+			continue
+		}
+		tmp := target + ".tmp"
+		if err := os.WriteFile(tmp, b, 0o644); err != nil {
+			fmt.Fprintf(stderr, "boxart: %s: %v\n", name, err)
+			res.Failed++
+			continue
+		}
+		if err := os.Rename(tmp, target); err != nil {
+			_ = os.Remove(tmp)
+			fmt.Fprintf(stderr, "boxart: %s: %v\n", name, err)
+			res.Failed++
+			continue
+		}
+		res.Written++
+	}
+	return res
+}
+
+func formatBoxartSummary(res boxartResult, applied bool) string {
+	verb := "plan"
+	if applied {
+		verb = "write"
+	}
+	parts := []string{
+		fmt.Sprintf("%d %s", res.Planned, verb),
+		fmt.Sprintf("%d written", res.Written),
+		fmt.Sprintf("%d existing", res.Existing),
+		fmt.Sprintf("%d no_media", res.NoMedia),
+		fmt.Sprintf("%d unmatched", res.Unmatched),
+		fmt.Sprintf("%d skipped", res.Skipped),
+	}
+	if res.Failed > 0 {
+		parts = append(parts, fmt.Sprintf("%d failed", res.Failed))
+	}
+	return "boxart: " + strings.Join(parts, ", ")
 }
